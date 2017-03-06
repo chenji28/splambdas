@@ -27,12 +27,13 @@ import java.util.InvalidPropertiesFormatException;
       "provider": "fb"
   }
 }
+//id=10210349543627655&provider=fb
 */
 public class Retriever implements StowplexRequestHandler{
 
     private static final String LOG_LABLE = "Retriver";
 
-    public static final String PATH = "/test/customers/get";
+    public static final String PATH = "/customers/get";
     private final TableInteractor tableInteractor;
     private final ObjectMapper mapper = new ObjectMapper();
     private final ProviderRetriever facebookInfoRetriever;

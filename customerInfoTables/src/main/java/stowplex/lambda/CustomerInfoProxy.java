@@ -8,6 +8,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 import java.io.*;
+import java.util.InvalidPropertiesFormatException;
 
 
 /**
@@ -17,6 +18,7 @@ public class CustomerInfoProxy implements RequestStreamHandler {
     private static final String LOG_LABLE = "CustomerInfoProxy";
     private JSONParser parser = new JSONParser();
     private Dispatcher dispatcher = new Dispatcher();
+    private static final boolean DEBUG = false;
 
     @Override
     public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context) throws IOException {
@@ -42,6 +44,9 @@ public class CustomerInfoProxy implements RequestStreamHandler {
         } catch(ParseException pex) {
             responseJson.put("statusCode", "400");
             responseJson.put("exception", pex);
+        } catch(InvalidPropertiesFormatException e){
+            responseJson.put("statusCode", "400");
+            responseJson.put("exception", e);
         }
 
         logger.logInfo(responseJson.toJSONString());
@@ -49,5 +54,4 @@ public class CustomerInfoProxy implements RequestStreamHandler {
         writer.write(responseJson.toJSONString());
         writer.close();
     }
-
 }
