@@ -1,4 +1,4 @@
-package stowplex.lambda.attributekeys;
+package stowplex.lambda.dao;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

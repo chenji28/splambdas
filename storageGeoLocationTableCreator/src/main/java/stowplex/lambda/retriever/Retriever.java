@@ -5,14 +5,13 @@ import com.amazonaws.geo.model.QueryRectangleRequest;
 import com.amazonaws.geo.model.QueryRectangleResult;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.simple.JSONObject;
 import stowplex.lambda.Logger;
 import stowplex.lambda.NoValueResponseFactory;
 import stowplex.lambda.StowplexRequestHandler;
 import stowplex.lambda.TableInteractor;
-import stowplex.lambda.attributekeys.AttributeKeys;
+import stowplex.lambda.dao.StorageGeoLocationDAO;
 
 import java.io.IOException;
 import java.util.InvalidPropertiesFormatException;
@@ -24,10 +23,9 @@ import java.util.List;
 
 /* Lambda test
 {
-  "path": "/test/storages/get",
+  "path": "/storages/get",
   "httpMethod": "GET",
   "queryStringParameters": {
-      "cid":"CID",
       "minPoint": {
             "latitude":"47.6091360",
             "longitude":"-122.3440570"
@@ -36,9 +34,24 @@ import java.util.List;
             "latitude":"47.6151360",
             "longitude":"-122.3360870"
       },
-      "available":"false"
+      "available":"true",
+      "type":"storage"
   }
 }
+
+// which is equivalent to
+{
+  "path": "/storages/get",
+  "httpMethod": "GET",
+  "queryStringParameters": {
+      "minPoint": "%7B%22latitude%22%3A%2247.6091360%22%2C%22longitude%22%3A%22-122.3440570%22%7D",
+       "maxPoint": "%7B%22latitude%22%3A%2247.6151360%22%2C%22longitude%22%3A%22-122.3360870%22%7D",
+      "available":"true",
+      "type":"storage"
+  }
+}
+
+//minPoint=%7B%22latitude%22%3A%2247.6091360%22%2C%22longitude%22%3A%22-122.3440570%22%7D&maxPoint=%7B%22latitude%22%3A%2247.6151360%22%2C%22longitude%22%3A%22-122.3360870%22%7D&available=true&type=storage
 
 // neigh1 == minPoint, neigh3 == maxPoint
 
@@ -56,15 +69,16 @@ import java.util.List;
 */
 public class Retriever implements StowplexRequestHandler {
 
-    private static final String LOG_LABLE = "Retriver";
+    private static final String LOG_LABLE = "Retriever";
 
-    public static final String PATH = "/test/storages/get";
+    public static final String PATH = "/storages/get";
     private final TableInteractor tableInteractor;
     private final ObjectMapper mapper = new ObjectMapper();
-    private static final Filterer filterer = new Filterer();
+    private final Filterer filterer;
 
     public Retriever(TableInteractor tableInteractor){
         this.tableInteractor = tableInteractor;
+        this.filterer = new Filterer(tableInteractor);
     }
 
     @Override
@@ -83,10 +97,11 @@ public class Retriever implements StowplexRequestHandler {
                     event.get("httpMethod").toString());
         }
 
+        //TODO: clean up this unnecessary marshall/unmarshall
         String queryInString = event.get("queryStringParameters").toString();
         try {
             RetrieverRequest request = mapper.readValue(queryInString,RetrieverRequest.class);
-            List<AttributeKeys> response = handleGet(request,logger);
+            List<StorageGeoLocationDAO> response = handleGet(request,logger);
             String responseInString = mapper.writeValueAsString(response);
             logger.logDebug("responseInString is:"+responseInString);
             return responseInString;
@@ -96,13 +111,22 @@ public class Retriever implements StowplexRequestHandler {
         }
     }
 
-    private List<AttributeKeys> handleGet(RetrieverRequest request, Logger logger) throws JsonProcessingException {
-        GeoPoint minPoint = new GeoPoint(request.getMinPoint().getLatitude(),request.getMinPoint().getLongitude());
-        GeoPoint maxPoint = new GeoPoint(request.getMaxPoint().getLatitude(),request.getMaxPoint().getLongitude());
+    private List<StorageGeoLocationDAO> handleGet(RetrieverRequest request, Logger logger) throws IOException {
+        RetrieverRequestGeoPoint requestMinPoint = RetrieverRequestGeoPoint
+                .builder()
+                .encodedGeoPoint(request.getMinPoint())
+                .build();
+        RetrieverRequestGeoPoint requestMaxPoint = RetrieverRequestGeoPoint
+                .builder()
+                .encodedGeoPoint(request.getMaxPoint())
+                .build();
+
+        GeoPoint minPoint = new GeoPoint(requestMinPoint.getLatitude(),requestMinPoint.getLongitude());
+        GeoPoint maxPoint = new GeoPoint(requestMaxPoint.getLatitude(),requestMaxPoint.getLongitude());
         QueryRectangleRequest queryRectangleRequest = new QueryRectangleRequest(minPoint,maxPoint);
 
         QueryRectangleResult queryRectangleResult = tableInteractor.getGeoDataManager().queryRectangle(queryRectangleRequest);
-        List<AttributeKeys> queryRectangleFilteredResult =
+        List<StorageGeoLocationDAO> queryRectangleFilteredResult =
                 filterer.getFilteredResult(queryRectangleResult,request, logger);
 
         printDebug(queryRectangleFilteredResult,logger);
@@ -110,18 +134,18 @@ public class Retriever implements StowplexRequestHandler {
         return queryRectangleFilteredResult;
     }
 
-    private void printDebug(List<AttributeKeys> queryRectangleFilteredResult, Logger logger){
+    private void printDebug(List<StorageGeoLocationDAO> queryRectangleFilteredResult, Logger logger){
 
         logger.logDebug("item count:"+queryRectangleFilteredResult.size());
-        for(AttributeKeys item : queryRectangleFilteredResult){
+        for(StorageGeoLocationDAO item : queryRectangleFilteredResult){
             logger.logDebug("item cid:"+
                     item.getCid()+
                     ", available:"+
                     item.isAvailable()+
                     ", latitude:"+
-                    item.getLatitude()+
+                    item.getStorageGeoJson().getCoordinates().get(0)+
                     ", longitude:"+
-                    item.getLongitude());
+                    item.getStorageGeoJson().getCoordinates().get(1));
         }
     }
 }

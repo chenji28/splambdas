@@ -14,15 +14,11 @@ public class RetrieverRequest {
 
     @NonNull
     @JsonProperty
-    private String cid; // customer ID
+    private String minPoint; //encodedMinPoint
 
     @NonNull
     @JsonProperty
-    private RetrieverRequestGeoPoint minPoint;
-
-    @NonNull
-    @JsonProperty
-    private RetrieverRequestGeoPoint maxPoint;
+    private String maxPoint; //encodedMaxPoint
 
     @JsonProperty
     private Boolean available;

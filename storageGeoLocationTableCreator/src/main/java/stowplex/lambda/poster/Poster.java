@@ -10,8 +10,11 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.simple.JSONObject;
-import stowplex.lambda.*;
-import stowplex.lambda.attributekeys.AttributeKeys;
+import stowplex.lambda.Logger;
+import stowplex.lambda.NoValueResponseFactory;
+import stowplex.lambda.StowplexRequestHandler;
+import stowplex.lambda.TableInteractor;
+import stowplex.lambda.dao.StorageGeoLocationDAO;
 
 import java.io.IOException;
 import java.util.InvalidPropertiesFormatException;
@@ -22,10 +25,10 @@ import java.util.InvalidPropertiesFormatException;
 
 /* Lambda test
 {
-  "path": "/test/storages/post",
+  "path": "/storages/post",
   "httpMethod": "POST",
-  "queryStringParameters": {
-      "sid":"center-SID",
+  "body": {
+      "storageId":"center-SID",
       "cid":"center",
       "latitude":"47.6101360",
       "longitude":"-122.3420570",
@@ -41,24 +44,29 @@ import java.util.InvalidPropertiesFormatException;
   }
 }
 {
-  "path": "/test/storages/post",
+  "path": "/storages/post",
   "httpMethod": "POST",
-  "queryStringParameters": {
-      "sid":"neigh2-SID",
+  "body": {
+      "storageId":"neigh2-SID",
+      "available":"true",
       "cid":"neigh2",
-      "latitude":"47.6141360",
-      "longitude":"-122.3390570",
-      "type":"storage",
-      "price":"100",
-      "title":"this is a test storage",
-      "rating":"80",
-      "displayPictureId":"displayPictureID",
       "storageDetail":{
         "description": "this is the description of the storage"
       },
-      "available":"true"
+      "displayPictureId":"displayPictureID",
+      "price":"100",
+      "rating":"80",
+      "storageGeoJson":{
+        "type":"Point",
+        "coordinates":[47.6141360,-122.3390570]
+      },
+      "title":"this is a test storage",
+      "type":"storage"
   }
 }
+
+//      "latitude":"47.6141360",
+//      "longitude":"-122.3390570",
 //	    center: {lat: 47.6101360, lng: -122.3420570},
 //	    neigh1: {lat: 47.6091360, lng: -122.3400570},
 //	    neigh2: {lat: 47.6141360, lng: -122.3390570},
@@ -68,7 +76,7 @@ public class Poster implements StowplexRequestHandler {
 
     private static final String LOG_LABLE = "Poster";
 
-    public static final String PATH = "/test/storages/post";
+    public static final String PATH = "/storages/post";
     private final TableInteractor tableInteractor;
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -80,8 +88,8 @@ public class Poster implements StowplexRequestHandler {
         LambdaLogger lambdaLogger = context.getLogger();
         Logger logger = new Logger(lambdaLogger, LOG_LABLE);
 
-        if (event.get("queryStringParameters") == null){
-            throw new InvalidPropertiesFormatException("queryStringParameters does not exist in event, event is:"+event.toJSONString());
+        if (event.get("body") == null){
+            throw new InvalidPropertiesFormatException("body does not exist in event, event is:"+event.toJSONString());
         }
 
         if (!event.get("httpMethod").toString().equalsIgnoreCase("POST") ) {
@@ -90,9 +98,9 @@ public class Poster implements StowplexRequestHandler {
                     event.get("httpMethod").toString());
         }
 
-        String storageInString = event.get("queryStringParameters").toString();
+        String storageInString = event.get("body").toString();
         try {
-            AttributeKeys request = mapper.readValue(storageInString,AttributeKeys.class);
+            StorageGeoLocationDAO request = mapper.readValue(storageInString,StorageGeoLocationDAO.class);
             handlePost(request);
             return NoValueResponseFactory.getSuccessResponseInString();
         } catch (IOException e) {
@@ -101,10 +109,11 @@ public class Poster implements StowplexRequestHandler {
         }
     }
 
-    private void handlePost(AttributeKeys request) throws JsonProcessingException {
-        GeoPoint geoPoint = new GeoPoint(request.getLatitude(), request.getLongitude());
+    private void handlePost(StorageGeoLocationDAO request) throws JsonProcessingException {
+        GeoPoint geoPoint = new GeoPoint(request.getStorageGeoJson().getCoordinates().get(0),
+                request.getStorageGeoJson().getCoordinates().get(1));
 
-        AttributeValue rangeKeyValue = new AttributeValue().withS(request.getSid());
+        AttributeValue rangeKeyValue = new AttributeValue().withS(request.getStorageId());
         PutPointRequest putPointRequest = new PutPointRequest(geoPoint, rangeKeyValue);
 
         AttributeValue cid = new AttributeValue().withS(request.getCid());

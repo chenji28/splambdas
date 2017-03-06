@@ -25,7 +25,7 @@ lambda testing
 */
 public class TableCreator implements StowplexRequestHandler {
 
-    public static final String PATH = "/test/storages/createTable";
+    public static final String PATH = "/storages/createTable";
 
     private static final String LOG_LABLE = "TableCreator";
     private static final int MILLSECOND_TO_SECOND = 1000;
