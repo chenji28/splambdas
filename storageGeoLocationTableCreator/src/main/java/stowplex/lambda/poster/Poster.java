@@ -30,8 +30,10 @@ import java.util.InvalidPropertiesFormatException;
   "body": {
       "storageId":"center-SID",
       "cid":"center",
-      "latitude":"47.6101360",
-      "longitude":"-122.3420570",
+      "storageGeoJson":{
+        "type":"Point",
+        "coordinates":[47.6101360,-122.3420570]
+      },
       "type":"storage",
       "price":"100",
       "title":"this is a test storage",
