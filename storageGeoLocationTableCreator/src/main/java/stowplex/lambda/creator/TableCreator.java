@@ -19,7 +19,7 @@ import stowplex.lambda.TableInteractor;
 /*
 lambda testing
 {
-    "path": "/test/storages/createTable",
+    "path": "/storages/createTable",
     "httpMethod": "GET"
 }
 */

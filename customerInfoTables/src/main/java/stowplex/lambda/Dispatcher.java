@@ -40,6 +40,4 @@ public class Dispatcher {
 
         throw new InvalidPropertiesFormatException("path does not exist in event, event is:"+event.toJSONString());
     }
-
-
 }
